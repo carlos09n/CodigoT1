@@ -26,7 +26,7 @@ algorithm_times <- numeric(nrow(odatasets_unique))
     # Return a list with variables X and y
     list(X = X, y = y)
   }
-  run_PSO<- function(X, y, target_cardinality,distancia,dataset_name){
+  run_PSO<- function(X, y, target_cardinality,dataset_name){
     # Cargar conjunto de datos iris
 
     # Seleccionar las columnas numéricas para el análisis
@@ -259,10 +259,16 @@ algorithm_times <- numeric(nrow(odatasets_unique))
     cat("Normalized Mutual Information (NMI): ", NMI, "\n")
     print("str de lo que tu sabes")
     global_results_PSO <- data.frame(
+      dataset = dataset_name,
       ARI = ARI,
       AMI = AMI,
       NMI = NMI,
-      Mean_Silhouette = mean_silhouette
+      Mean_Silhouette = mean_silhouette,
+      num_clusters = k,
+      num_features = ncol(X),
+      num_instances = nrow(X),
+      cardinality_pred = paste(as.vector(size_calc), collapse = ", "),
+      cardinality_real = paste(as.vector(size_real), collapse = ", ")
     )
     if (file.exists("global_results_PSO.csv")) {
       write.table(global_results_PSO, "global_results_PSO.csv", sep = ",", row.names = FALSE, col.names = FALSE, append = TRUE)
@@ -274,7 +280,7 @@ algorithm_times <- numeric(nrow(odatasets_unique))
     data <- prepare_data(dataset)
     X <- data$X
     y <- data$y
-
+    dataset_name<- dataset_name
     # Medir solo la ejecución del algoritmo BAT:
     start_algo <- Sys.time()
     results <- run_PSO(X, y, target_cardinality,dataset_name)
@@ -309,9 +315,7 @@ algorithm_times <- numeric(nrow(odatasets_unique))
 
       # Ejecutar clustering y medir solo la parte del algoritmo de BAT
       algo_time <- run_clustering(dataset, target_cardinality, dataset_name)
-      print("paso por aqui")
       algorithm_times[i] <- algo_time
-      print("paso por aqui1")
       cat("Algorithm execution time for position", i, ":", algo_time, "seconds\n")
 
     }, error = function(e) {
@@ -328,7 +332,3 @@ algorithm_times <- numeric(nrow(odatasets_unique))
   # Filter global_results_KmedoidsSC to only include datasets with common names
   #global_results_KmedoidsSC <- global_results_KmedoidsSC[global_results_KmedoidsSC$name %in% common_names, ]
 
-  # Write the results to a CSV file
-  write.csv(global_results_PSO, "global_results_PSO.csv", row.names = FALSE)
-  resultados=read.csv("global_results_PSO.csv")
-  print(resultados)

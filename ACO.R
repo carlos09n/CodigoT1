@@ -3,11 +3,17 @@ library(proxy)
 algorithm_times <- numeric(nrow(odatasets_unique))
 global_results_Aco <- data.frame(
   name = character(),
+  Best_Seed = integer(),
   ARI = numeric(),
   AMI = numeric(),
   NMI = numeric(),
   Mean_Silhouette = numeric(),
-  Execution_Time = numeric()
+  Clusters = integer(),
+  number_features = integer(),
+  number_instances = integer(),
+  cardinality_ACO = I(list()),
+  cardinality_REAL = I(list()),
+  stringsAsFactors = FALSE
 )
 i=0
 prepare_data <- function(dataset) {
@@ -214,20 +220,30 @@ run_clustering <- function(dataset, target_cardinality, dataset_name) {
   results <- run_ACO(X, y, target_cardinality)
   end_algo <- Sys.time()
   algo_time <- as.numeric(difftime(end_algo, start_algo, units = "secs"))
+  num_variables <- ncol(X)
+  num_instances <- nrow(X)
+  num_clusters <- results$Cluster
+  class_dist <- as.numeric(table(results$best_solution))
+  best_seed <- NA  # ACO no usa semilla explícita
   global_results_Aco <<- rbind(global_results_Aco, data.frame(
     name = dataset_name,
+    Best_Seed = best_seed,
     ARI = results$ARI,
     AMI = results$AMI,
     NMI = results$NMI,
     Mean_Silhouette = results$mean_silhouette,
-    Execution_Time = algo_time
+    Clusters = num_clusters,
+    number_features = num_variables,
+    number_instances = num_instances,
+    cardinality_ACO = I(list(class_dist)),
+    cardinality_REAL = I(list(target_cardinality))
   ))
   archivo="resultados_ACO.csv"
   if (!file.exists(archivo) || file.info(archivo)$size == 0) {
-    write.table(df_temp, file = archivo, sep = ",", row.names = FALSE, col.names = TRUE)
+    write.table(global_results_Aco, file = archivo, sep = ",", row.names = FALSE, col.names = TRUE)
   } else {
     # En el resto, solo agregamos sin encabezados
-    write.table(df_temp, file = archivo, sep = ",", row.names = FALSE, col.names = FALSE, append = TRUE)
+    write.table(global_results_Aco, file = archivo, sep = ",", row.names = FALSE, col.names = FALSE, append = TRUE)
   }
   return(algo_time)}
 for (i in 1:nrow(odatasets_unique)) {

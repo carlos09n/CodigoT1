@@ -25,6 +25,8 @@ Execute_Test <- function (numalt){
     "4" = { source("ACO.R"); },
     "5" = { source("PSO.R"); },
     "6" = { source("HCAKC.R"); },
+    "7" = { source("PSO.R");
+      source("HCAKC.R"); },
     warning("Opción no válida.")
   )
       
