@@ -211,12 +211,5 @@ cat("\nTotal execution time (including data preparation and iteration over datas
 # -----------------------------------------------------------------------------
 global_results_KmedoidsSC$cardinality_pred <- sapply(global_results_KmedoidsSC$cardinality_pred, paste, collapse = ", ")
 global_results_KmedoidsSC$cardinality_real <- sapply(global_results_KmedoidsSC$cardinality_real, paste, collapse = ", ")
-
-# Get intersection of names (common datasets)
-#common_names <- intersect(global_results_total$name, global_results_KmedoidsSC$name)
-
-# Filter global_results_KmedoidsSC to only include datasets with common names
-#global_results_KmedoidsSC <- global_results_KmedoidsSC[global_results_KmedoidsSC$name %in% common_names, ]
-
 # Write the results to a CSV file
 write.csv(global_results_KmedoidsSC, "results_KmedoidsSC.csv", row.names = FALSE)

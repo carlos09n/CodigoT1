@@ -3,8 +3,6 @@ library(mlr3oml)
 library(mlr3)
 library(pryr)
 library(dplyr) 
-# OpenML Functions
-
 # Function to filter unique datasets
 filter_unique_datasets <- function(dataset) {
   dataset %>%

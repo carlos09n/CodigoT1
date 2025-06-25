@@ -15,19 +15,6 @@ library(dplyr)
 # -----------------------------------------------------------------------------
 # CSCLP Function: clustering with size constraints using linear programming
 # -----------------------------------------------------------------------------
-# global_results <<- data.frame(
-#   name = dataset_name,
-#   Best_Seed = best_seed,
-#   ARI = ARI_value,
-#   AMI = AMI_value,
-#   NMI = NMI_value,
-#   Mean_Silhouette = mean_silhouette,
-#   Clusters = num_clusters,
-#   number_features = num_variables,
-#   number_instances = num_instances,
-#   cardinality_BAT = I(list(class_dist)),
-#   cardinality_REAL = I(list(target_cardinality))
-# ))
 
 # Function to prepare data with validation of the dependent variable
 prepare_data <- function(dataset) {
@@ -142,10 +129,15 @@ run_CSCLP <- function(dataset, target_cardinality, dataset_name) {
   ARI_value <- ARI(y, label_pred)
   AMI_value <- AMI(y, label_pred)
   NMI_value <- NMI(y, label_pred)
+  cat()
   
   # Get the predicted cardinality (number of elements per cluster)
   cardinality_pred <- as.integer(table(label_pred))
-  
+  cat(mean_silhouette,"\n")
+  cat(ARI_value,"\n")
+  cat(AMI_value,"\n")
+  cat(NMI_value,"\n")
+  cat(cardinality_pred,"\n")
   # Calculate the violations in size constraints
   violations <- sum(abs(cardinality_pred - target_cardinality))
   
@@ -198,7 +190,6 @@ global_results_CSCLP <- data.frame(
 # - class_distribution_vector: vector with the real cardinality
 
 start_time_total <- Sys.time()
-
 for (i in 1:nrow(odatasets_unique)) {
   cat("\n\n--- Running CSCLP for dataset at position:", i, "---\n")
   start_time <- Sys.time()
@@ -252,19 +243,8 @@ cat("\nTotal execution time (including data preparation and iteration over datas
 # -----------------------------------------------------------------------------
 # Prepare the results for visualization and save to CSV
 # -----------------------------------------------------------------------------
-# violations_data <- data.frame(
-#   Violations = sapply(1:nrow(global_results), function(i) {
-#     real <- unlist(global_results$cardinality_REAL[i])
-#     bat <- unlist(global_results$cardinality_BAT[i])
-#     sum(abs(real - bat))
-#   })
-# )
+
 # global_results_CSCLP$cardinality_pred <- sapply(global_results_CSCLP$cardinality_pred, paste, collapse = ", ")
 global_results_CSCLP$cardinality_real <- sapply(global_results_CSCLP$cardinality_real, paste, collapse = ", ")
-
-# (Optional) Filter by common names if necessary:
-# global_results_total <- cbind(violations_data, global_results)
-# common_names <- intersect(global_results_total$name, global_results_CSCLP$name)
-# global_results_CSCLP <- global_results_CSCLP[global_results_CSCLP$name %in% common_names, ]
 
 write.csv(global_results_CSCLP, "results_CSCLP.csv", row.names = FALSE)

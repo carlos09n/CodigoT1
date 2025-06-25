@@ -10,6 +10,9 @@ library(corrplot)
 library(clValid)
 library(RColorBrewer)
 library(factoextra) # For PCA visualization
+#----------------------------------------------------------------------------------------------#
+# HCAKC
+#----------------------------------------------------------------------------------------------#
 # Function to prepare data with validation of the dependent variable
 prepare_data <- function(dataset) {
   # Ensure that the dataset is a data.frame
@@ -39,7 +42,7 @@ run_HCAKC <- function(X, y, target_cardinality, dataset_name) {
   library(mclust)
   library(aricode)
   
-  # Validaciones iniciales
+  # Initial validations
   if (is.null(X) || is.null(y) || is.null(target_cardinality)) {
     stop("Datos nulos detectados. Verifique que X, y y target_cardinality no sean NULL.")
   }
@@ -55,11 +58,11 @@ run_HCAKC <- function(X, y, target_cardinality, dataset_name) {
   K <- length(target_cardinality)
   cat("Número de clusters (K):", K, "\n")
   
-  # Matrices de restricciones básicas por defecto
+  # Default basic constraint matrices
   M <- matrix(0, K, K)
   C <- matrix(0, K, K)
   
-  # Función de Silhouette mejorada
+  # Improved Silhouette feature
   IS <- function(x, cluster, centroids) {
     a <- sqrt(sum((x - centroids[cluster, ])^2))
     b <- min(sapply(1:nrow(centroids), function(i) {
@@ -69,7 +72,7 @@ run_HCAKC <- function(X, y, target_cardinality, dataset_name) {
     return((b - a) / max(a, b))
   }
   
-  # CUCMC: actualiza matriz de cohesión basada en restricciones
+  # CUCMC: updates cohesion matrix based on constraints
   CUCMC <- function(X, M, C) {
     for (i in seq_len(nrow(X))) {
       for (j in seq_len(ncol(X))) {
@@ -80,7 +83,7 @@ run_HCAKC <- function(X, y, target_cardinality, dataset_name) {
     return(X)
   }
   
-  # Algoritmo principal HCAKC
+  # Main HCAKC algorithm
   HCAKC_specified <- function(data, K, cluster_sizes, M, C) {
     n <- nrow(data)
     p <- ncol(data)
@@ -88,7 +91,7 @@ run_HCAKC <- function(X, y, target_cardinality, dataset_name) {
     clusters <- integer(n)
     centroids <- matrix(NA, nrow = K, ncol = p)
     
-    # Inicialización simple: asignación secuencial de instancias
+    # Simple initialization: sequential allocation of instances
     start_idx <- 1
     for (k in seq_len(K)) {
       end_idx <- start_idx + cluster_sizes[k] - 1
@@ -100,10 +103,10 @@ run_HCAKC <- function(X, y, target_cardinality, dataset_name) {
       start_idx <- end_idx + 1
     }
     
-    # Cálculo de IS para cada instancia
+    # Calculation of IS for each instance
     IS_values <- sapply(seq_len(n), function(i) IS(data[i, ], clusters[i], centroids))
     
-    # Matriz de cohesión
+    # Cohesion matrix
     Xmat <- matrix(0, K, K)
     for (i in seq_len(K)) {
       for (j in seq_len(K)) {
@@ -119,20 +122,23 @@ run_HCAKC <- function(X, y, target_cardinality, dataset_name) {
     return(list(clusters = clusters, centroids = centroids))
   }
   
-  # Ejecutar algoritmo
+  # Run algorithm
   resultado <- tryCatch({
+    start_time <- Sys.time()
     result_specified <- HCAKC_specified(X, K, target_cardinality, M, C)
+    end_time <- Sys.time()
+    exec_time <- as.numeric(difftime(end_time, start_time, units = "secs"))
     
     clusters <- result_specified$clusters
     centroids <- result_specified$centroids
     
-    # Validaciones
+    # Validations
     if (length(unique(clusters)) != K) {
       warning("El número de clusters encontrados no coincide con K.")
     }
     
-    # Evaluación
-    dist_matrix <- dist(X)
+    # evaluation
+    dist_matrix <- proxy::dist(as.matrix(X), method = "cosine")
     sil <- silhouette(clusters, dist_matrix)
     mean_silhouette <- mean(sil[, 3])
     
@@ -157,7 +163,8 @@ run_HCAKC <- function(X, y, target_cardinality, dataset_name) {
       num_features = ncol(X),
       num_instances = nrow(X),
       cardinality_pred = paste(as.vector(size_calc), collapse = ", "),
-      cardinality_real = paste(as.vector(size_real), collapse = ", ")
+      cardinality_real = paste(as.vector(size_real), collapse = ", "),
+      exec_time_sec = exec_time
     )
     
     output_path <- "global_results_HCAKC.csv"
@@ -176,64 +183,6 @@ run_HCAKC <- function(X, y, target_cardinality, dataset_name) {
   return(resultado)
 }
 
-# print_results <- function(results, y, X, D, target_cardinality, dataset_name) {
-#   best_solution <- results$best_solution
-#   best_score <- results$best_score
-#   best_seed <- results$best_seed
-#   seeds <- results$seeds
-#   num_instances <- nrow(X)  
-#   num_variables <- ncol(X) + 1
-#   
-#   # Calculate ARI, AMI, and NMI
-#   ARI_value <- ARI(y, best_solution)
-#   AMI_value <- AMI(y, best_solution)
-#   NMI_value <- NMI(y, best_solution)
-#   
-#   # Calculate the silhouette coefficient for the final solution
-#   silhouette_values <- silhouette(x = best_solution, dist = as.dist(D))
-#   mean_silhouette <- mean(silhouette_values[, "sil_width"])
-#   
-#   # Convert silhouette values to a data frame
-#   silhouette_df <- as.data.frame(silhouette_values[, c("cluster", "sil_width")])
-#   
-#   # Save as CSV file
-#   write.csv(silhouette_df, "silhouette_results.csv", row.names = FALSE)
-#   
-#   cat("Silhouette coefficient results have been saved to 'silhouette_results.csv'.\n")
-#   
-#   # Count the number of clusters
-#   num_clusters <- length(unique(best_solution))
-#   class_dist = as.integer(table(best_solution))
-#   
-#   # Store results in the global results data frame
-#   global_results <<- rbind(global_results, data.frame(
-#     name = dataset_name,
-#     Best_Seed = best_seed,
-#     ARI = ARI_value,
-#     AMI = AMI_value,
-#     NMI = NMI_value,
-#     Mean_Silhouette = mean_silhouette,
-#     Clusters = num_clusters,
-#     number_features = num_variables,
-#     number_instances = num_instances,
-#     cardinality_pred = paste(class_dist, collapse = ", "),
-#     cardinality_REAL = paste(target_cardinality, collapse = ", ")
-#   ))
-#   
-#   # Show information in the console
-#   cat("Average silhouette coefficient:", mean_silhouette, "\n")
-#   cat("Seeds used for each bat:\n")
-#   print(seeds)
-#   cat("\nThe seed of the bat with the best solution was:", best_seed, "\n")
-#   
-#   cat("\nOptimal cluster assignment (Bat Algorithm):\n")
-#   print(table(best_solution))
-#   cat("Number of clusters:", num_clusters, "\n")
-#   
-#   cat("\nAdjusted Rand Index (ARI):", ARI_value, "\n")
-#   cat("Adjusted Mutual Information (AMI):", AMI_value, "\n")
-#   cat("Normalized Mutual Information (NMI):", NMI_value, "\n")
-# }
 
 
 # Main function to run everything
@@ -248,9 +197,6 @@ run_clustering <- function(dataset, target_cardinality, dataset_name) {
   end_algo <- Sys.time()
   algo_time <- as.numeric(difftime(end_algo, start_algo, units = "secs"))
   
-  # Imprimir resultados (incluye la escritura de silhouette_results.csv)
-  # print_results(results, y, X, D, target_cardinality, dataset_name)
-  
   # Devolver el tiempo de ejecución del algoritmo
   return(algo_time)
 }
@@ -258,31 +204,8 @@ run_clustering <- function(dataset, target_cardinality, dataset_name) {
 # Algorithm Execution
 #----------------------------------------------------------------------------------------------#
 
-# Create a global data frame to store results (global_results will be updated in print_results)
-global_results <- data.frame(
-  name = character(),
-  Best_Seed = integer(),
-  ARI = numeric(),
-  AMI = numeric(),
-  NMI = numeric(),
-  Mean_Silhouette = numeric(),
-  Clusters = integer(),
-  number_features = integer(),
-  number_instances = integer(),
-  cardinality_pred = I(list()),
-  cardinality_REAL = I(list()),
-  stringsAsFactors = FALSE
-)
-
-# Vector to store the algorithm execution times (only BAT part)
+# Vector to store the algorithm execution times
 algorithm_times <- numeric(nrow(odatasets_unique))
-
-# Individual Execution Example
-# dataset <- odatasets_unique[53]$dataset[[1]] # dataset 
-# dataset_name = odatasets_unique[53]$name  # nombre del dataset
-# target_cardinality <- odatasets_unique[53]$class_distribution_vector[[1]] # cardinalidad real
-# run_clustering(dataset, target_cardinality, dataset_name)
-
 for (i in 1:nrow(odatasets_unique)) {
   cat("\n\n--- Executing for dataset at position:", i, "---\n")
   
@@ -314,26 +237,3 @@ for (i in 1:nrow(odatasets_unique)) {
     algorithm_times[i] <- NA
   })
 }
-
-
-# Prepare data for violations summary
-# violations_data <- data.frame(
-#   Violations = sapply(1:nrow(global_results), function(i) {
-#     real <- as.numeric(unlist(strsplit(global_results$cardinality_REAL[i], ", ")))
-#     pred <- as.numeric(unlist(strsplit(global_results$cardinality_pred[i], ", ")))
-#     sum(abs(real - pred))
-#   })
-# )
-# 
-# algorithm_times <- algorithm_times[algorithm_times != 0 & !is.na(algorithm_times)]
-# # Incorporar el vector de tiempos medidos al data frame final
-# global_results_total <- cbind(violations_data, global_results)
-# global_results_total$Execution_Time <- algorithm_times
-# 
-# # (Opcional) Remover las columnas de cardinalidades si no se desean en el CSV final
-# global_results_total$cardinality_BAT <- NULL
-# global_results_total$cardinality_REAL <- NULL
-# print("antes de guardar")
-# write.csv(global_results_total, "results_HCAKC.csv", row.names = FALSE)
-# datos_cargados <- read.csv("results_HCAKC.csv")
-# print(datos_cargados)

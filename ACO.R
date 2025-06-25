@@ -1,21 +1,9 @@
 library(cluster)
 library(proxy)
-algorithm_times <- numeric(nrow(odatasets_unique))
-global_results_Aco <- data.frame(
-  name = character(),
-  Best_Seed = integer(),
-  ARI = numeric(),
-  AMI = numeric(),
-  NMI = numeric(),
-  Mean_Silhouette = numeric(),
-  Clusters = integer(),
-  number_features = integer(),
-  number_instances = integer(),
-  cardinality_ACO = I(list()),
-  cardinality_REAL = I(list()),
-  stringsAsFactors = FALSE
-)
-i=0
+#----------------------------------------------------------------------------------------------#
+# ACO
+#----------------------------------------------------------------------------------------------#
+# Function to prepare data with validation of the dependent variable
 prepare_data <- function(dataset) {
   dataset <- as.data.frame(dataset)
   
@@ -30,6 +18,21 @@ prepare_data <- function(dataset) {
   }
   list(X = X, y = y)
 }
+
+global_results_Aco <- data.frame(
+  name = character(),
+  Best_Seed = integer(),
+  ARI = numeric(),
+  AMI = numeric(),
+  NMI = numeric(),
+  Mean_Silhouette = numeric(),
+  Clusters = integer(),
+  number_features = integer(),
+  number_instances = integer(),
+  cardinality_ACO = I(list()),
+  cardinality_REAL = I(list()),
+  stringsAsFactors = FALSE
+)
 run_ACO<- function(X, y, target_cardinality){
   # Parameters for ACO
   n_ants <- 50
@@ -127,76 +130,17 @@ run_ACO<- function(X, y, target_cardinality){
     }
   }
   
-  #=============================================================================================
-  # Print results
-  cat("Number of clusters (kmeans):", length(target_cardinality), "\n")
-  cat("Optimal cluster assignment (ACO):\n")
-  print(table(best_cluster_assignment))
-  cat("Clusters de kmeans")
-  print(table(cluster_assignment))
-  cat("Number of clusters (ACO):", length(unique(best_cluster_assignment)), "\n")
-  print(best_cluster_assignment) # ACO
-  print(cluster_assignment)#kmeans
-  
-  
-  #================================================================================================================
-  #distancia <- mat_dist_cos(X)
+
+  distancia <- proxy::dist(as.matrix(X), method = "cosine")
   silhouette_values <- silhouette(x = best_cluster_assignment, dist = as.dist(distancia))
   mean_silhouette <- mean(silhouette_values[, "sil_width"])
-  
-  # Personaliza colores
-  colores <- rainbow(max(best_cluster_assignment))
-  
-  # Plotear las medidas de silueta
-  plot(silhouette_values, col = colores, border = NA, cex.names = 0.7)
-  
-  # Agregar la línea vertical para el valor medio de la silueta
-  abline(v = mean_silhouette, lty = 2, col = "red")
-  
-  # Ajustar la posición del texto "Media"
-  text(mean_silhouette, max(silhouette_values[, "sil_width"]),
-       labels = paste("Media =", round(mean_silhouette, 3)),
-       pos = 2, col = "red", cex = 0.8)
-  
-  # Mostrar el promedio del coeficiente de silueta
-  print(paste("Promedio del coeficiente de silueta:", mean_silhouette))
-  
-  #==================================================================================================================
-  #MATRIZ DE DISTANCIAS
-  # if (!require("pheatmap")) install.packages("pheatmap")
-  # library(pheatmap)
-  # 
-  # # Convierte la matriz de distancias a una matriz cuadrada
-  # D_matrix <- as.matrix(distancia)
-  # 
-  # # Configura la paleta de colores
-  # my_palette <- colorRampPalette(c("blue", "white", "red"))(256)
-  # 
-  # # Configura las etiquetas de fila y columna
-  # rownames(D_matrix) <- colnames(D_matrix) <- as.character(best_cluster_assignment)
-  # 
-  # # Crea un gráfico de matriz de distancias con pheatmap
-  # pheatmap(
-  #   D_matrix,
-  #   cluster_cols = FALSE, # No agrupar las columnas
-  #   cluster_rows = FALSE, # No agrupar las filas
-  #   main = "Matriz de Distancias del Dataset",
-  #   fontsize = 8, # Tamaño de letra
-  #   fontsize_row = 8,
-  #   fontsize_col = 8,
-  #   color = my_palette,
-  #   labels_row = best_cluster_assignment,
-  #   labels_col = best_cluster_assignment,
-  #   show_colnames = TRUE,
-  #   show_rownames = TRUE
-  # )
-  #=============================================================================================
+
   
   if (!require("aricode")) install.packages("aricode")
   
   # Cargar bibliotecas necesarias
   library(aricode)
-  
+  cat("silueta:",mean_silhouette,"\n")
   # Calcular ARI
   ARI <- ARI(y, best_cluster_assignment)
   cat("Adjusted Rand Index (ARI): ", ARI, "\n")
@@ -209,13 +153,16 @@ run_ACO<- function(X, y, target_cardinality){
   NMI <- NMI(y, best_cluster_assignment)
   cat("Normalized Mutual Information (NMI): ", NMI, "\n")
   #guardar_resultados(AMI,ARI,NMI,mean_silhouette,"resulst_ACO.csv")
+  tabla <- table(best_cluster_assignment)
+  tabla <- paste(as.numeric(tabla), collapse = " ")
+  cat("alineamiento:",tabla ,"\n")
   list(best_solution = best_cluster_assignment,mean_silhouette=mean_silhouette,AMI=AMI,ARI=ARI,NMI=NMI,Cluster=length(unique(best_cluster_assignment)),cardinality_real=target_cardinality,cardinality_pred=best_cluster_assignment)
 }
 run_clustering <- function(dataset, target_cardinality, dataset_name) {
   data <- prepare_data(dataset)
   X <- data$X
   y <- data$y
-  # Medir solo la ejecución del algoritmo BAT:
+  # Store the data of the algorithm execusion:
   start_algo <- Sys.time()
   results <- run_ACO(X, y, target_cardinality)
   end_algo <- Sys.time()
@@ -236,16 +183,15 @@ run_clustering <- function(dataset, target_cardinality, dataset_name) {
     number_features = num_variables,
     number_instances = num_instances,
     cardinality_ACO = I(list(class_dist)),
-    cardinality_REAL = I(list(target_cardinality))
+    cardinality_REAL = I(list(target_cardinality)),
+    execution_time = algo_time
   ))
-  archivo="resultados_ACO.csv"
-  if (!file.exists(archivo) || file.info(archivo)$size == 0) {
-    write.table(global_results_Aco, file = archivo, sep = ",", row.names = FALSE, col.names = TRUE)
-  } else {
-    # En el resto, solo agregamos sin encabezados
-    write.table(global_results_Aco, file = archivo, sep = ",", row.names = FALSE, col.names = FALSE, append = TRUE)
-  }
+
   return(algo_time)}
+#----------------------------------------------------------------------------------------------#
+# Algorithm Execution
+#----------------------------------------------------------------------------------------------#
+algorithm_times <- numeric(nrow(odatasets_unique))
 for (i in 1:nrow(odatasets_unique)) {
   cat("\n\n--- Executing for dataset at position:", i, "---\n")
   
@@ -278,8 +224,4 @@ for (i in 1:nrow(odatasets_unique)) {
   })
 }
 
-
-
-
-#=============================================================================================
-# Function to evaluate the quality of a solution (in this case, the silhouette score)
+  write.table(global_results_Aco, file = archivo, sep = ",", row.names = FALSE, col.names = TRUE)

@@ -39,7 +39,7 @@ prepare_data <- function(dataset) {
 }
 # Function to calculate the distance matrix
 calculate_distance_matrix <- function(X) {
-  D <- proxy::dist(as.matrix(X), method = "euclidean")
+  D <- proxy::dist(as.matrix(X), method = "cosine")
   as.matrix(D)
 }
 
@@ -420,9 +420,4 @@ global_results_total$Execution_Time <- algorithm_times
 # (Opcional) Remover las columnas de cardinalidades si no se desean en el CSV final
 global_results_total$cardinality_BAT <- NULL
 global_results_total$cardinality_REAL <- NULL
-print("antes de guardar")
 write.csv(global_results_total, "results_KMeansBA.csv", row.names = FALSE)
-print("antes de mostrar")
-datos_cargados <- read.csv("results_KMeansBA.csv")
-print(datos_cargados)
-print("mostrados")
